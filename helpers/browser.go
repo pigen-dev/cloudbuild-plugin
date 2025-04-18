@@ -9,7 +9,7 @@ import (
 func OpenBrowser(url string) error {
 	var cmd string
 	var args []string
-
+	fmt.Println("Opening browser with URL:", url)
 	switch {
 	case isWindows():
 		cmd = "rundll32"

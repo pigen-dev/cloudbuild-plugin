@@ -7,8 +7,6 @@ import (
 	"path/filepath"
 
 	"text/template"
-
-	"github.com/pigen-dev/cloudbuild-plugin/helpers"
 	shared "github.com/pigen-dev/shared"
 
 	"gopkg.in/yaml.v2"
@@ -19,12 +17,7 @@ type CloudbuildFile struct {
 	Steps []CloudbuildStep `yaml:"steps"`
 }
 
-func (cb *Cloudbuild) GeneratScript(pigenFile map[string] any)(error){
-	pigen := shared.PigenSteps{}
-	err := helpers.YamlConfigParser(pigenFile, &pigen)
-	if err != nil {
-		return err
-	}
+func (cb *Cloudbuild) GeneratScript(pigenFile shared.PigenStepsFile)(error){
 	currentDir, err := os.Getwd()
 	if err != nil {
 		return err
@@ -42,7 +35,7 @@ func (cb *Cloudbuild) GeneratScript(pigenFile map[string] any)(error){
 		return err
 	}
 	//Go through all steps in pi-gen.yaml and find it in the templates file
-	for _,pigenStep := range pigen.Steps {
+	for _,pigenStep := range pigenFile.Steps {
 		for _,cloudbuildStepTemplate := range cloudbuildStepTemplates.Steps {
 			//Find the desired step in the templates
 			if pigenStep.Step == cloudbuildStepTemplate.Id {

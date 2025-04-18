@@ -2,7 +2,6 @@ package cloudbuild
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/pigen-dev/cloudbuild-plugin/helpers"
 	shared "github.com/pigen-dev/shared"
@@ -25,30 +24,32 @@ type Config struct {
 	ProjectRegion string `yaml:"project_region"`
 }
 
-func (cb *Cloudbuild) ConnectRepo(pigenFile map[string] any) error {
+func (cb *Cloudbuild) ConnectRepo(pigenFile shared.PigenStepsFile) (shared.ActionRequired) {
+	// err := helpers.OpenBrowser("https://www.google.com")
+	// if err != nil {
+	// 	return err
+	// }
 	ctx := context.Background()
 	err := cb.ParseConfig(pigenFile)
 	if err != nil {
-		return err
+		return shared.ActionRequired{
+			ActionUrl: "",
+			Error: err,
+		}
 	}
 	githubConfig, err := helpers.ParseGithubUrl(cb.GithubUrl)
 	if err != nil {
-		return err
+		return shared.ActionRequired{
+			ActionUrl: "",
+			Error: err,
+		}
 	}
-	err = cb.create_github_connection(ctx, githubConfig)
-	if err != nil {
-		return fmt.Errorf("error creating github connection")
-	}
-	return nil
+	actionResponse := cb.create_github_connection(ctx, githubConfig)
+	return actionResponse
 }
 
-func (cb *Cloudbuild) ParseConfig(pigenFile map[string] any) error {
-	pigen := shared.PigenSteps{}
-	err := helpers.YamlConfigParser(pigenFile, &pigen)
-	if err != nil {
-		return err
-	}
-	err = helpers.YamlConfigParser(pigenFile, cb)
+func (cb *Cloudbuild) ParseConfig(pigenFile shared.PigenStepsFile) error {
+	err := helpers.YamlConfigParser(pigenFile.Config, cb)
 	if err != nil {
 		return err
 	}

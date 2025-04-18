@@ -4,8 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"time"
+
 	"github.com/pigen-dev/cloudbuild-plugin/helpers"
+	shared "github.com/pigen-dev/shared"
 
 	cloudbuild "cloud.google.com/go/cloudbuild/apiv2"
 	cloudbuildpb "cloud.google.com/go/cloudbuild/apiv2/cloudbuildpb"
@@ -14,39 +15,64 @@ import (
 
 
 
-func (cb *Cloudbuild)create_github_connection(ctx context.Context, gitConfig helpers.GithubUrl) (error){
+func (cb *Cloudbuild)create_github_connection(ctx context.Context, gitConfig helpers.GithubUrl) (shared.ActionRequired){
 	
-	connection, err := cb.connection_exist(ctx, gitConfig)
+	log.Printf("Connecting git: %v", gitConfig.Parent)
+	connection, actionUri, err := cb.create_connection(ctx, gitConfig)
 	if err != nil {
-		return err
-	}
-	if connection == nil {
-		log.Printf("Connecting git: %v", gitConfig.Parent)
-		connection , err = cb.create_connection(ctx, gitConfig)
-		if err != nil {
-			return err
+		return shared.ActionRequired{
+			ActionUrl: "",
+			Error: err,
 		}
 	}
+	if actionUri != "" {
+		log.Printf("Connection %v is not complete, action required: %v", gitConfig.Parent, actionUri)
+		return shared.ActionRequired{
+			ActionUrl: actionUri,
+			Error: nil,
+		}
+	}
+
 	log.Printf("Connection %v does exist", gitConfig.Parent)
 
 	repo, err := cb.repo_connected(ctx, gitConfig)
 	if err != nil {
-		return err
+		return shared.ActionRequired{
+			ActionUrl: "",
+			Error: err,
+		}
 	}
 	if repo == nil {
 		log.Printf("Connecting repository: %v", gitConfig.Repo)
 		_ , err = cb.connect_repository(ctx, gitConfig, connection)
 		if err != nil {
-			return err
+			return shared.ActionRequired{
+				ActionUrl: "",
+				Error: err,
+			}
 		}
-		return nil
+		return shared.ActionRequired{
+			ActionUrl: "",
+			Error: nil,
+		}
 	}
 	log.Printf("Repository %v does exist", gitConfig.Repo)
 	
-	return nil
+	return shared.ActionRequired{
+		ActionUrl: "",
+		Error: nil,
+	}
 }
 
-func (cb *Cloudbuild) create_connection(ctx context.Context, gitConfig helpers.GithubUrl) (*cloudbuildpb.Connection, error) {
+func (cb *Cloudbuild) create_connection(ctx context.Context, gitConfig helpers.GithubUrl) (connection *cloudbuildpb.Connection, actionUrl string, err error) {
+	connectionExist, err := cb.connection_exist(ctx, gitConfig)
+	if connectionExist != nil {
+		state := connectionExist.GetInstallationState().GetStage()
+		if state.String() == "COMPLETE" {
+			return connectionExist, "", nil
+		}
+		return nil, connectionExist.GetInstallationState().GetActionUri(), nil
+	}
 	log.Printf("Connecting github %v: ", gitConfig.Url)
 	c, err := cloudbuild.NewRepositoryManagerClient(ctx)
 	defer func(){
@@ -55,12 +81,12 @@ func (cb *Cloudbuild) create_connection(ctx context.Context, gitConfig helpers.G
 		}
 	}()
 	if err != nil {
-			return nil, fmt.Errorf("can't create cloudbuild client: %v", err)
+			return nil, "", fmt.Errorf("can't create cloudbuild client: %v", err)
 	}
 	
 	parent := "projects/" + cb.Deployment.Config.ProjectNumber + "/locations/" + cb.Deployment.Config.ProjectRegion
 	
-	connection := &cloudbuildpb.Connection{
+	connection = &cloudbuildpb.Connection{
 		Name: parent + "/connections/" + gitConfig.Parent,
 		ConnectionConfig: &cloudbuildpb.Connection_GithubConfig{},
 	}
@@ -73,38 +99,15 @@ func (cb *Cloudbuild) create_connection(ctx context.Context, gitConfig helpers.G
 	fmt.Println(connection.Name)
 	createOp, err := c.CreateConnection(ctx, req)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	createOp.Wait(ctx)
 	op_connection, err := createOp.Poll(ctx)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
-	// Open the URL in the default browser
-	err = helpers.OpenBrowser(op_connection.GetInstallationState().GetActionUri())
-	if err != nil {
-		log.Fatalf("Failed to open browser: %v", err)
-	}
-	getConnection := &cloudbuildpb.GetConnectionRequest {
-		Name: parent + "/connections/" + gitConfig.Parent,
-	}
-	updatedConnection, err := c.GetConnection(ctx,getConnection)
-	if err != nil {
-		return nil, err
-	}
-	for {
-		time.Sleep(3 * time.Second)
-		state := updatedConnection.GetInstallationState().GetStage()
-		if state.String() == "COMPLETE" {
-			break
-		}
-		updatedConnection, err = c.GetConnection(ctx,getConnection)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return updatedConnection, nil
+	return nil, op_connection.GetInstallationState().GetActionUri(), nil
 }
 
 func (cb *Cloudbuild) connect_repository(ctx context.Context, gitConfig helpers.GithubUrl, connection *cloudbuildpb.Connection) (*cloudbuildpb.Repository, error) {

@@ -10,10 +10,11 @@ import (
 	"cloud.google.com/go/cloudbuild/apiv2"
 	"github.com/google/uuid"
 	"github.com/pigen-dev/cloudbuild-plugin/helpers"
+	shared "github.com/pigen-dev/shared"
 	"google.golang.org/api/iterator"
 )
 
-func (cb *Cloudbuild) CreateTrigger(pigenFile map[string] any) error {
+func (cb *Cloudbuild) CreateTrigger(pigenFile shared.PigenStepsFile) error {
 	ctx := context.Background()
 	err := cb.ParseConfig(pigenFile)
 	if err != nil {
