@@ -84,7 +84,7 @@ func (cb *Cloudbuild) create_connection(ctx context.Context, gitConfig helpers.G
 			return nil, "", fmt.Errorf("can't create cloudbuild client: %v", err)
 	}
 	
-	parent := "projects/" + cb.Deployment.Config.ProjectNumber + "/locations/" + cb.Deployment.Config.ProjectRegion
+	parent := "projects/" + cb.Deployment.ProjectNumber + "/locations/" + cb.Deployment.ProjectRegion
 	
 	connection = &cloudbuildpb.Connection{
 		Name: parent + "/connections/" + gitConfig.Parent,
@@ -144,7 +144,7 @@ func (cb *Cloudbuild) connect_repository(ctx context.Context, gitConfig helpers.
 //Check whether git connection exist or not, if it exist return it else return nil
 
 func (cb *Cloudbuild) connection_exist(ctx context.Context, gitConfig helpers.GithubUrl) (*cloudbuildpb.Connection, error) {
-	parent := "projects/"+cb.Deployment.Config.ProjectId+"/locations/" + cb.Deployment.Config.ProjectRegion
+	parent := "projects/"+cb.Deployment.ProjectId+"/locations/" + cb.Deployment.ProjectRegion
 	connectionName := parent + "/connections/"+gitConfig.Parent
 	log.Printf("checking connection existing : %v", connectionName)
 	c, err := cloudbuild.NewRepositoryManagerClient(ctx)
@@ -178,7 +178,7 @@ func (cb *Cloudbuild) connection_exist(ctx context.Context, gitConfig helpers.Gi
 
 
 func (cb *Cloudbuild) repo_connected(ctx context.Context, gitConfig helpers.GithubUrl) (*cloudbuildpb.Repository, error) {
-	parent := "projects/"+cb.Deployment.Config.ProjectId+"/locations/" + cb.Deployment.Config.ProjectRegion + "/connections/" + gitConfig.Parent
+	parent := "projects/"+cb.Deployment.ProjectId+"/locations/" + cb.Deployment.ProjectRegion + "/connections/" + gitConfig.Parent
 	repoName := parent + "/repositories/" + gitConfig.Repo
 	log.Printf("checking connection existing : %v", repoName)
 	c, err := cloudbuild.NewRepositoryManagerClient(ctx)
