@@ -15,44 +15,64 @@ import (
 
 type CloudbuildFile struct {
 	Steps []CloudbuildStep `yaml:"steps"`
+	Options map[string]any `yaml:"options"`
 }
 
-func (cb *Cloudbuild) GeneratScript(pigenFile shared.PigenStepsFile)(error){
+func (cb *Cloudbuild) GeneratScript(pigenFile shared.PigenStepsFile)(shared.CICDFile){
 	currentDir, err := os.Getwd()
 	if err != nil {
-		return err
-	}
-	destFile := filepath.Join(currentDir, "step-templates", "steps.yaml")
-	b, err := os.ReadFile(destFile)
-	if err != nil {
-		return err
-	}
-	cloudbuildStepTemplates := StepTemplatesFile{}
-	cloudbuildScript := CloudbuildFile{}
-	//Get step templates and parse it into the cicd tool script file struct
-	err = yaml.Unmarshal(b, &cloudbuildStepTemplates)
-	if err != nil {
-		return err
-	}
-	//Go through all steps in pi-gen.yaml and find it in the templates file
-	for _,pigenStep := range pigenFile.Steps {
-		for _,cloudbuildStepTemplate := range cloudbuildStepTemplates.Steps {
-			//Find the desired step in the templates
-			if pigenStep.Step == cloudbuildStepTemplate.Id {
-				cloudbuildStep, err := ReplacePlaceholders(pigenStep, cloudbuildStepTemplate)
-				if err != nil {
-					return err
-				}
-				cloudbuildScript.Steps = append(cloudbuildScript.Steps, cloudbuildStep)
-				
-			}
+		return shared.CICDFile{
+			Error: err,
+			FileScript: nil,
 		}
 	}
-	b, err = yaml.Marshal(cloudbuildScript)
-	if err != nil {
-		return err
+	cloudbuildScript := CloudbuildFile{}
+
+	
+	for _,pigenStep := range pigenFile.Steps {
+		//TODO: Get step template file from bucket
+		stepTemplateFile := fmt.Sprintf("%s.yaml", pigenStep.Step)
+		destFile := filepath.Join(currentDir, "step-templates", stepTemplateFile)
+		b, err := os.ReadFile(destFile)
+		if err != nil {
+			return shared.CICDFile{
+				Error: err,
+				FileScript: nil,
+			}
+		}
+		cloudbuildPigenTemplate := CloudbuildStep{}
+		err = yaml.Unmarshal(b, &cloudbuildPigenTemplate)
+		if err != nil {
+			return shared.CICDFile{
+				Error: err,
+				FileScript: nil,
+			}
+		}
+		cloudbuildStep, err := ReplacePlaceholders(pigenStep, cloudbuildPigenTemplate)
+		if err != nil {
+			return shared.CICDFile{
+				Error: err,
+				FileScript: nil,
+			}
+		}
+		cloudbuildScript.Steps = append(cloudbuildScript.Steps, cloudbuildStep)
+			
 	}
-	return os.WriteFile("cloudbuild.yaml",b,0666)
+	//TODO: Change hard coded options field
+	cloudbuildScript.Options = map[string]any{
+		"logging": "CLOUD_LOGGING_ONLY",
+	}
+	b, err := yaml.Marshal(cloudbuildScript)
+	if err != nil {
+		return shared.CICDFile{
+			Error: err,
+			FileScript: nil,
+		}
+	}
+	return shared.CICDFile{
+		Error: nil,
+		FileScript: b,
+	}
 }
 
 
