@@ -14,11 +14,6 @@ type Cloudbuild struct {
 }
 
 type Deployment struct {
-	Target string `yaml:"target"`
-	Config Config `yaml:"config"`
-}
-
-type Config struct {
 	ProjectNumber string `yaml:"project_number"`
 	ProjectId string `yaml:"project_id"`
 	ProjectRegion string `yaml:"project_region"`

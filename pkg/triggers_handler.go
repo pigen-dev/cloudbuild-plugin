@@ -42,7 +42,7 @@ func (cb *Cloudbuild) CreateTrigger(pigenFile shared.PigenStepsFile) error {
 }
 
 func (cb Cloudbuild) trigger_exist(ctx context.Context, githubConfig helpers.GithubUrl) (*cloudbuildpbv1.BuildTrigger, error){
-	parent := "projects/"+cb.Deployment.Config.ProjectId+"/locations/" + cb.Deployment.Config.ProjectRegion
+	parent := "projects/"+cb.Deployment.ProjectId+"/locations/" + cb.Deployment.ProjectRegion
 	cv1, err := cloudbuildv1.NewClient(ctx)
 	c, err := cloudbuild.NewRepositoryManagerClient(ctx)
 	defer func(){
@@ -55,7 +55,7 @@ func (cb Cloudbuild) trigger_exist(ctx context.Context, githubConfig helpers.Git
 	}
 	listBuildTriggersRequest := &cloudbuildpbv1.ListBuildTriggersRequest{
 		Parent: parent,
-		ProjectId: cb.Deployment.Config.ProjectId,
+		ProjectId: cb.Deployment.ProjectId,
 	}
 	resp := cv1.ListBuildTriggers(ctx, listBuildTriggersRequest)
 	for {
@@ -87,7 +87,7 @@ func (cb Cloudbuild) create_trigger(ctx context.Context, githubConfig helpers.Gi
 	}
 	//a trigger name must not exceed 64 character that's why i can't use owner + repo name
 	encodedName := uuid.New().String()
-	parent := "projects/"+cb.Deployment.Config.ProjectId+"/locations/" + cb.Deployment.Config.ProjectRegion
+	parent := "projects/"+cb.Deployment.ProjectId+"/locations/" + cb.Deployment.ProjectRegion
 
 	pushFilter_Branch := &cloudbuildpbv1.PushFilter_Branch{
 		Branch: cb.TargetBranch,
@@ -114,7 +114,7 @@ func (cb Cloudbuild) create_trigger(ctx context.Context, githubConfig helpers.Gi
 		Name:encodedName[:8],
 		Description:"This is a trigger on " + githubConfig.Parent+"-"+githubConfig.Repo + "-" + cb.TargetBranch,
 		BuildTemplate: buildTrigger_Filename,
-		ServiceAccount: "projects/"+cb.Deployment.Config.ProjectId+"/serviceAccounts/cloudbuild-sa@aidodev.iam.gserviceaccount.com",
+		ServiceAccount: "projects/"+cb.Deployment.ProjectId+"/serviceAccounts/cloudbuild-sa@aidodev.iam.gserviceaccount.com",
 		RepositoryEventConfig: repositoryEventConfig,
 	}
 	
@@ -122,7 +122,7 @@ func (cb Cloudbuild) create_trigger(ctx context.Context, githubConfig helpers.Gi
 	createBuildTriggerRequest := &cloudbuildpbv1.CreateBuildTriggerRequest{
 		//Parent: "projects/"+cb.Deployment.Config.ProjectNumber+"/locations/" + cb.Deployment.Config.ProjectRegion,
 		Parent: parent,
-		ProjectId: cb.Deployment.Config.ProjectId,
+		ProjectId: cb.Deployment.ProjectId,
 		Trigger: buildTrigger,
 		
 	}
