@@ -24,7 +24,6 @@ func (cb *Cloudbuild) CreateTrigger(pigenFile shared.PigenStepsFile) error {
 	if err != nil {
 		return err
 	}
-	
 
 	trigger, err := cb.trigger_exist(ctx, githubConfig)
 	if err != nil {
@@ -37,6 +36,8 @@ func (cb *Cloudbuild) CreateTrigger(pigenFile shared.PigenStepsFile) error {
 			return err
 		}
 		return nil
+	} else{
+		log.Printf("Trigger already exist on: %v", githubConfig.Url)
 	}
 	return nil
 }
@@ -44,14 +45,18 @@ func (cb *Cloudbuild) CreateTrigger(pigenFile shared.PigenStepsFile) error {
 func (cb Cloudbuild) trigger_exist(ctx context.Context, githubConfig helpers.GithubUrl) (*cloudbuildpbv1.BuildTrigger, error){
 	parent := "projects/"+cb.Deployment.ProjectId+"/locations/" + cb.Deployment.ProjectRegion
 	cv1, err := cloudbuildv1.NewClient(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("can't create cloudbuild client to check if trigger exist: %v", err)
+	}
 	c, err := cloudbuild.NewRepositoryManagerClient(ctx)
+
 	defer func(){
 		if err == nil {
 			c.Close()
 		}
 	}()
 	if err != nil {
-			return nil, fmt.Errorf("can't create cloudbuild client to check if trigger exist")
+			return nil, fmt.Errorf("can't create cloudbuild client to check if trigger exist: %v", err)
 	}
 	listBuildTriggersRequest := &cloudbuildpbv1.ListBuildTriggersRequest{
 		Parent: parent,
@@ -59,16 +64,20 @@ func (cb Cloudbuild) trigger_exist(ctx context.Context, githubConfig helpers.Git
 	}
 	resp := cv1.ListBuildTriggers(ctx, listBuildTriggersRequest)
 	for {
-		resp, err := resp.Next()
-		if err == iterator.Done {
-			break
-		}
+		repo, err := resp.Next()
 		if err != nil {
-			return nil, err
+			if err == iterator.Done {
+				break
+			} else{
+				return nil, fmt.Errorf("error while iterating over triggers: %v", err)
+			}
 		}
-		if resp.RepositoryEventConfig.Repository == parent+"/connections/"+githubConfig.Parent+"/repositories/"+githubConfig.Repo && resp.RepositoryEventConfig.GetPush().GetBranch() == cb.TargetBranch {
+		if repo.RepositoryEventConfig == nil {
+			continue
+		}
+		if repo.RepositoryEventConfig.Repository == parent+"/connections/"+githubConfig.Parent+"/repositories/"+githubConfig.Repo && repo.RepositoryEventConfig.GetPush().GetBranch() == cb.TargetBranch {
 			log.Printf("Trigger for repository %v on branch %v does exist", githubConfig.Url, cb.TargetBranch)
-			return resp, nil
+			return repo, nil
 		}
 	}
 	return nil, nil
@@ -83,7 +92,7 @@ func (cb Cloudbuild) create_trigger(ctx context.Context, githubConfig helpers.Gi
 		}
 	}()
 	if err != nil {
-			return nil, fmt.Errorf("can't create cloudbuild client to create trigger")
+			return nil, fmt.Errorf("can't create cloudbuild client to create trigger: %v", err)
 	}
 	//a trigger name must not exceed 64 character that's why i can't use owner + repo name
 	encodedName := uuid.New().String()
