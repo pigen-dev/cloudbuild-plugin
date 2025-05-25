@@ -3,10 +3,8 @@ package cloudbuild
 import (
 	"bytes"
 	"fmt"
-	"os"
-	"path/filepath"
-
 	"text/template"
+	"github.com/pigen-dev/cloudbuild-plugin/helpers"
 	shared "github.com/pigen-dev/shared"
 
 	"gopkg.in/yaml.v2"
@@ -19,21 +17,10 @@ type CloudbuildFile struct {
 }
 
 func (cb *Cloudbuild) GeneratScript(pigenFile shared.PigenStepsFile)(shared.CICDFile){
-	currentDir, err := os.Getwd()
-	if err != nil {
-		return shared.CICDFile{
-			Error: err,
-			FileScript: nil,
-		}
-	}
 	cloudbuildScript := CloudbuildFile{}
-
-	
 	for _,pigenStep := range pigenFile.Steps {
 		//TODO: Get step template file from bucket
-		stepTemplateFile := fmt.Sprintf("%s.yaml", pigenStep.Step)
-		destFile := filepath.Join(currentDir, "step-templates", stepTemplateFile)
-		b, err := os.ReadFile(destFile)
+		b, err := helpers.GetStepTemplate(pigenStep.Step)
 		if err != nil {
 			return shared.CICDFile{
 				Error: err,

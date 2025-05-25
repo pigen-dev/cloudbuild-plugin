@@ -42,6 +42,13 @@ func main(){
 	// 				"image": "testing/add:latest",
 	// 			}, // empty placeholders as dummy
 	// 		},
+	// 		{
+	// 			"step":         "google-cloud-run",
+	// 			"placeholders": map[string]any{
+	// 				"image": "testing/add:latest",
+	// 				"service_name": "testing",
+	// 			}, // empty placeholders as dummy
+	// 		},
 	// 	},
 	// }
 	// pigenFile := shared.PigenStepsFile{}
@@ -50,12 +57,12 @@ func main(){
 	// 	panic(err)
 	// }
 	// cloudbuildPlugin := &pkg.Cloudbuild{}
-	// err = cloudbuildPlugin.CreateTrigger(pigenFile)
-	// if err != nil {
-	// 	fmt.Println("Error creating trigger:", err)
+	// cicdFile := cloudbuildPlugin.GeneratScript(pigenFile)
+	// if cicdFile.Error != nil {
+	// 	fmt.Println("Error gen script:", cicdFile.Error)
 	// 	return
 	// }
-	//os.WriteFile("cloudbuild.yaml", cicdFile.FileScript, 0644)
+	// os.WriteFile("cloudbuild.yaml", cicdFile.FileScript, 0644)
 	cloudbuildPlugin := &pkg.Cloudbuild{}
 	pluginMap := map[string]plugin.Plugin{"cicdPlugin": &shared.CicdPlugin{Impl: cloudbuildPlugin}}
 
