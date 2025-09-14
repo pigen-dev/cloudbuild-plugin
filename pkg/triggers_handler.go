@@ -123,7 +123,7 @@ func (cb Cloudbuild) create_trigger(ctx context.Context, githubConfig helpers.Gi
 		Name:encodedName[:8],
 		Description:"This is a trigger on " + githubConfig.Parent+"-"+githubConfig.Repo + "-" + cb.TargetBranch,
 		BuildTemplate: buildTrigger_Filename,
-		ServiceAccount: "projects/"+cb.Deployment.ProjectId+"/serviceAccounts/"+cb.Deployment.ProjectNumber+"-compute@developer.gserviceaccount.com ",
+		ServiceAccount: "projects/"+cb.Deployment.ProjectId+"/serviceAccounts/"+cb.Deployment.ProjectNumber+"-compute@developer.gserviceaccount.com",
 		RepositoryEventConfig: repositoryEventConfig,
 	}
 	
